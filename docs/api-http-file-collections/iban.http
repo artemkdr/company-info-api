@@ -1,0 +1,21 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+### Verify a German IBAN (BIC may be resolved via external fallback provider, if enabled)
+GET {{host}}/api/v1/iban/verify?iban=DE75%205121%200800%201245%201261%2099
+X-Api-Key: {{apiKey}}
+
+### Verify a French IBAN (BIC may be resolved from local lookup data if the bank code exists in the bundled dataset)
+GET {{host}}/api/v1/iban/verify?iban=FR76%2030006%200001%201234567890189
+X-Api-Key: {{apiKey}}
+
+### Verify a Dutch IBAN (BIC may be resolved via external fallback provider, if enabled)
+GET {{host}}/api/v1/iban/verify?iban=NL02ABNA0123456789
+X-Api-Key: {{apiKey}}
+
+### Verify an IBAN with invalid checksum
+GET {{host}}/api/v1/iban/verify?iban=DE75%205121%200800%201245%201261%2098
+X-Api-Key: {{apiKey}}
+
+### Verify an IBAN and request XML response
+GET {{host}}/api/v1/iban/verify?iban=DE75%205121%200800%201245%201261%2099&format=xml
+X-Api-Key: {{apiKey}}

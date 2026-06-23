@@ -1,0 +1,22 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+### Calculate TVA from SIREN
+GET {{host}}/api/v1/tva-calculator?siren=443061841
+X-Api-Key: {{apiKey}}
+
+### Calculate TVA - with spaces in SIREN
+GET {{host}}/api/v1/tva-calculator?siren=443-061-841
+X-Api-Key: {{apiKey}}
+
+### Calculate TVA - invalid SIREN (too short)
+GET {{host}}/api/v1/tva-calculator?siren=12345
+X-Api-Key: {{apiKey}}
+
+### Calculate TVA - XML response via query param
+GET {{host}}/api/v1/tva-calculator?siren=443061841&format=xml
+X-Api-Key: {{apiKey}}
+
+### Calculate TVA - XML response via Accept header
+GET {{host}}/api/v1/tva-calculator?siren=443061841
+X-Api-Key: {{apiKey}}
+Accept: application/xml

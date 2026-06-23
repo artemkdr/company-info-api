@@ -1,0 +1,13 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+### Get establishment by SIRET
+GET {{host}}/api/v1/insee/establishments/98221925500014 
+X-Api-Key: {{apiKey}}
+
+### Get establishment - invalid SIRET
+GET {{host}}/api/v1/insee/establishments/00000000000000
+X-Api-Key: {{apiKey}}
+
+### Get establishment - XML response
+GET {{host}}/api/v1/insee/establishments/98221925500014?format=xml
+X-Api-Key: {{apiKey}}

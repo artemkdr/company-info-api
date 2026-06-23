@@ -1,0 +1,133 @@
+name: 2. Deploy to VPS (Hetzner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: 'GitHub Actions runner to use (e.g. ubuntu-24.04-arm, ubuntu-24.04, ubuntu-latest)'
+      platform:
+        required: false
+        type: string
+        default: linux/amd64
+        description: 'Target platform(s) for the Docker image (e.g. linux/arm64,linux/amd64)'
+
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ${{ github.event.inputs.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha,prefix={{branch}}-
+            
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        target: production
+        platforms: ${{ github.event.inputs.platform }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Copy deployment files to Hetzner
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        port: ${{ secrets.HETZNER_SSH_PORT || 22 }}
+        username: ${{ secrets.HETZNER_USER || 'admin' }}
+        key: ${{ secrets.HETZNER_SSH_KEY }}
+        source: "deploy/docker-compose-vps.yml,deploy/safe-replace-of-env-var.sh,deploy/nginx.conf,deploy/.env.production"
+        target: "~/app/${{ github.event.repository.name }}/"
+        strip_components: 1
+
+    - name: Deploy to Hetzner
+      uses: appleboy/ssh-action@v1.0.3
+      env:
+        EXTERNALAPIS_INSEE_APIKEY: ${{ secrets.EXTERNALAPIS_INSEE_APIKEY }}
+        
+      with:
+        host: ${{ secrets.HETZNER_HOST }}
+        port: ${{ secrets.HETZNER_SSH_PORT || 22 }}
+        username: ${{ secrets.HETZNER_USER || 'admin' }}
+        key: ${{ secrets.HETZNER_SSH_KEY }}
+        envs: EXTERNALAPIS_INSEE_APIKEY
+        script: |
+          set -euo pipefail
+
+          # Ensure deploy directory exists and switch into it
+          mkdir -p ~/app/${{ github.event.repository.name }}
+          cd ~/app/${{ github.event.repository.name }}
+
+          # Rename docker-compose file to expected name
+          mv docker-compose-vps.yml docker-compose.yml
+
+          # Create .env file from .env.production template by replacing placeholders with secrets
+          cp .env.production .env
+
+          # Make sure safe-replace-of-env-var.sh is executable
+          chmod +x safe-replace-of-env-var.sh
+          
+          # Login and deploy
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Set ENV_FILE variable for docker compose
+          # Docker compose will use it lately in env_file argument
+          export ENV_FILE=".env"
+          
+          # Replace TO-SET-ON-DEPLOYMENT placeholders with actual secret values
+          ./safe-replace-of-env-var.sh ExternalApis__Insee__ApiKey "$EXTERNALAPIS_INSEE_APIKEY" .env
+          # ./safe-replace-of-env-var.sh ApiKeys__0 "$APIKEYS_0" .env
+
+          # Login and deploy
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Pull latest images
+          docker compose pull
+          
+          # Stop and remove any containers not defined in current compose file
+          docker compose down --remove-orphans
+          
+          # Start all services and wait for them to be healthy
+          docker compose up -d --wait
+          
+          # Reload nginx configuration (in case it changed)
+          docker compose exec nginx nginx -s reload || true
+          
+          # Show final status
+          echo "All services are healthy!"
+          docker compose ps
+          
+          # Cleanup unused images and containers
+          docker image prune -f
+          docker container prune -f

@@ -1,0 +1,4 @@
+CountryCode,BankCode,BranchCode,Bic,BankName,Source
+FR,30006,00001,AGRIFRPPXXX,Credit Agricole,template
+DE,51210800,,INGDDEFFXXX,ING-DiBa AG,template
+NL,ABNA,,ABNANL2AXXX,ABN AMRO,template

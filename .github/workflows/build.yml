@@ -1,0 +1,12 @@
+name: "Build"
+
+on: 
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-net:
+    uses: artemkdr/.github/.github/workflows/build-net.yml@main
+    with:
+      runner: "'ubuntu-latest'"
+      dotnet-version: '9.0.x'

@@ -1,0 +1,36 @@
+CountryCode,LookupKey,Bic,BankCode,BranchCode,BankName,Source
+SK,0200,SUBASKBX,0200,,Všeobecná úverová banka a.s.,Slovak National Bank AP0001 Code List
+SK,0900,SLSPSKBX,0900,,Slovenská sporiteľňa a.s.,Slovak National Bank AP0001 Code List
+SK,0720,NBSLSKBX,0720,,Národná banka Slovenska,Slovak National Bank AP0001 Code List
+SK,1100,TATRSKBX,1100,,Tatra banka a.s.,Slovak National Bank AP0001 Code List
+SK,1111,UNCRSKBX,1111,,UniCredit Bank Czech Republic and Slovakia a.s.,Slovak National Bank AP0001 Code List
+SK,3000,SLZBSKBA,3000,,Slovenská záručná a rozvojová banka a.s.,Slovak National Bank AP0001 Code List
+SK,3100,LUBASKBX,3100,,Prima banka Slovensko a.s.,Slovak National Bank AP0001 Code List
+SK,5200,OTPVSKBX,5200,,Československá obchodná banka a.s.,Slovak National Bank AP0001 Code List
+SK,5600,PKBASK2X,5600,,Prima banka Slovensko a.s.,Slovak National Bank AP0001 Code List
+SK,5900,PSSPSKBA,5900,,Prvá stavebná sporiteľňa a.s.,Slovak National Bank AP0001 Code List
+SK,6500,PABKSKBA,6500,,365.bank a.s.,Slovak National Bank AP0001 Code List
+SK,7300,INGBSAKBX,7300,,ING Bank N.V. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,7500,CEKOSASKBX,7500,,Československá obchodná banka a.s.,Slovak National Bank AP0001 Code List
+SK,7930,SPVWSKBA,7930,,Wüstenrot stavebná sporiteľňa a.s.,Slovak National Bank AP0001 Code List
+SK,8050,COBASASKBX,8050,,COMMERZBANK Aktiengesellschaft pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8100,KOMBSASKBA,8100,,Komerční banka a.s. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8120,BASLSK22,8120,,Privatbanka a.s.,Slovak National Bank AP0001 Code List
+SK,8130,CITISASKBA,8130,,Citibank Europe plc pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8170,CSOBSASKBX,8170,,ČSOB stavebná sporiteľňa a.s.,Slovak National Bank AP0001 Code List
+SK,8160,EXSRSKBX,8160,,EXIMBANKA SR,Slovak National Bank AP0001 Code List
+SK,8180,SPSRSKBA,8180,,Štátna pokladnica,Slovak National Bank AP0001 Code List
+SK,8191,CDSASKBX,8191,,Centrálny depozitár cenných papierov SR a.s.,Slovak National Bank AP0001 Code List
+SK,8400,MAISSASKBX,8400,,COFIDIS SA pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8320,JTBPSASKBA,8320,,JT BANKA a.s. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8330,FIOZSASKBA,8330,,Fio banka a.s. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8360,BREXSASKBX,8360,,mBank S.A. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8370,SMWRSASKBA,8370,,Oberbank AG pobočka zahraničnej banky v Slovenskej republike,Slovak National Bank AP0001 Code List
+SK,8420,BKSBSKBB,8420,,BKS Bank AG pobočka zahraničnej banky v SR,Slovak National Bank AP0001 Code List
+SK,8430,KDBHSASKBX,8430,,KDB Bank Europe Ltd. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,9950,PKSRSKBX,9950,,SIA Central Europe a.s.,Slovak National Bank AP0001 Code List
+SK,9952,TTPASKBX,9952,,Trust Pay a.s.,Slovak National Bank AP0001 Code List
+SK,9954,KPAASK22,9954,,K-PAY a.s.,Slovak National Bank AP0001 Code List
+SK,9955,PANXSK22,9955,,Unifiedpost Payments organizačná zložka,Slovak National Bank AP0001 Code List
+SK,8440,BNPASASKBX,8440,,BNP PARIBAS PERSONAL FINANCE SA pobočka zahraničnej banky,Slovak National Bank AP0001 Code List
+SK,8450,BPKOSASKBB,8450,,PKO BP S.A. pobočka zahraničnej banky,Slovak National Bank AP0001 Code List

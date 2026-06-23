@@ -1,0 +1,33 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+# ----- Format validation (local, no external API, never fails) -----
+
+### Validate format of a French VAT number
+GET {{host}}/api/v1/vies/validate?vatNumber=FR89380129866
+X-Api-Key: {{apiKey}}
+
+### Validate format of a German VAT number
+GET {{host}}/api/v1/vies/validate?vatNumber=DE123456789
+X-Api-Key: {{apiKey}}
+
+### Validate format of an invalid VAT number
+GET {{host}}/api/v1/vies/validate?vatNumber=XX000000000
+X-Api-Key: {{apiKey}}
+
+### Validate format - XML response
+GET {{host}}/api/v1/vies/validate?vatNumber=FR89380129866&format=xml
+X-Api-Key: {{apiKey}}
+
+# ----- Active check (external VIES API, cached) -----
+
+### Check if French VAT number is active in VIES
+GET {{host}}/api/v1/vies/check-active?vatNumber=FR89380129866
+X-Api-Key: {{apiKey}}
+
+### Check if German VAT number is active in VIES
+GET {{host}}/api/v1/vies/check-active?vatNumber=DE123456789
+X-Api-Key: {{apiKey}}
+
+### Check active - XML response
+GET {{host}}/api/v1/vies/check-active?vatNumber=FR89380129866&format=xml
+X-Api-Key: {{apiKey}}

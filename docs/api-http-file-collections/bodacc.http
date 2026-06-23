@@ -1,0 +1,9 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+### Search BODACC by registration number
+GET {{host}}/api/v1/bodacc/search?registrationNumber=98221925500014
+X-Api-Key: {{apiKey}}
+
+### Search BODACC by registration number
+GET {{host}}/api/v1/bodacc/search?registrationNumber=33214122500026
+X-Api-Key: {{apiKey}}

@@ -1,0 +1,22 @@
+### Uses variables from .vscode/settings.json (local/production)
+
+### Look up Swiss UID
+GET {{host}}/api/v1/ch-ide/CHE-104.817.176
+X-Api-Key: {{apiKey}}
+
+### Validate Swiss UID
+GET {{host}}/api/v1/ch-ide/CHE-104.817.176/validate
+X-Api-Key: {{apiKey}}
+
+### Look up invalid UID
+GET {{host}}/api/v1/ch-ide/CHE-000.000.000
+X-Api-Key: {{apiKey}}
+
+### Look up UID - XML response
+GET {{host}}/api/v1/ch-ide/CHE-104.817.176?format=xml
+X-Api-Key: {{apiKey}}
+
+### Look up UID - XML response via Accept header
+GET {{host}}/api/v1/ch-ide/CHE-104.817.176
+X-Api-Key: {{apiKey}}
+Accept: application/xml

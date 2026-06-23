@@ -1,0 +1,19 @@
+{
+    "tasks": [{
+        "name": "Run csharpier",
+        "command": "dotnet",
+        "args": [ "csharpier", "format", "." ],
+        "include": [
+            "**/*.cs",
+            "**/*.csx",
+            "**/*.csproj",
+            "**/*.props",
+            "**/*.targets",
+            "**/*.xml",
+            "**/*.config",
+            "**/*.yml",
+            "**/*.yaml",
+            "**/*.json"
+        ]
+    }]
+}

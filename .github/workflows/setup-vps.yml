@@ -1,0 +1,80 @@
+name: 1. Setup Ubuntu VPS with Ansible (run it once)
+
+on:
+  workflow_dispatch:
+    inputs:
+      vps_host:
+        description: 'VPS IP address or hostname'
+        required: true
+        type: string
+      new_ssh_port:
+        description: 'New SSH port (f.e. 41222)'
+        required: true
+        type: number
+      current_ssh_port:
+        description: 'Current SSH port (default: 22)'
+        required: true
+        default: 22
+        type: number
+      allowed_ssh_admin_ips:
+        description: 'Comma-separated list of admin (login with password) IPs for SSH access'
+        required: true
+        type: string
+      allowed_http_ips:
+        description: 'Comma-separated list of IPs for HTTP access'
+        required: true
+        type: string
+      ssh_user:
+        description: 'SSH username for VPS'
+        required: true
+        default: 'admin'
+        type: string
+
+jobs:
+  setup-vps:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Create Ansible inventory
+      run: |
+        mkdir -p ansible
+        cat > ansible/inventory.ini << EOF
+        [vps]
+        ${{ inputs.vps_host }} ansible_user=${{ inputs.ssh_user }} ansible_ssh_private_key_file=~/.ssh/deploy_key ansible_port=${{ inputs.current_ssh_port }}
+        EOF
+
+    - name: Create SSH key from secret
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H -p ${{ inputs.current_ssh_port }} ${{ inputs.vps_host }} >> ~/.ssh/known_hosts
+
+    - name: Test SSH connection
+      run: |
+        ssh -i ~/.ssh/deploy_key -p ${{ inputs.current_ssh_port }} -o ConnectTimeout=10 ${{ inputs.ssh_user }}@${{ inputs.vps_host }} "echo 'SSH connection successful (using port ${{ inputs.current_ssh_port }})'"
+
+    - name: Run Ansible playbook
+      uses: dawidd6/action-ansible-playbook@v2
+      with:
+        playbook: ansible-playbook.yml
+        directory: ./
+        key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        inventory: |
+          [vps]
+          ${{ inputs.vps_host }} ansible_user=${{ inputs.ssh_user }} ansible_port=${{ inputs.current_ssh_port }}
+        options: |
+          --extra-vars "ALLOWED_HTTP_IPS=${{ inputs.allowed_http_ips }} ALLOWED_SSH_ADMIN_IPS=${{ inputs.allowed_ssh_admin_ips }} SSH_PORT=${{ inputs.new_ssh_port }}"
+
+    - name: Verify Docker installation
+      run: |
+        ssh -i ~/.ssh/deploy_key -p ${{ inputs.new_ssh_port }} ${{ inputs.ssh_user }}@${{ inputs.vps_host }} \
+          "docker --version && docker compose version"
+
+    - name: Clean up SSH key
+      if: always()
+      run: |
+        rm -f ~/.ssh/deploy_key

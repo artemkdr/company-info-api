@@ -1,0 +1,514 @@
+---
+- name: Setup Ubuntu VPS for Docker deployments
+  hosts: all
+  become: yes
+  vars:
+    allowed_ssh_admin_ips: "{{ ALLOWED_SSH_ADMIN_IPS | default('') | split(',') | map('trim') | reject('equalto', '') | list }}"
+    allowed_http_ips: "{{ ALLOWED_HTTP_IPS | default('') | split(',') | map('trim') | reject('equalto', '') | list }}"
+    ssh_port: "{{ SSH_PORT | default(22) }}"
+    additional_volume_device: "{{ VOLUME_DEVICE | default('auto') }}"
+    
+  tasks:
+    - name: The list of allowed SSH admin ips passed
+      debug:
+        var: allowed_ssh_admin_ips
+
+    - name: The list of allowed HTTP ips passed
+      debug:
+        var: allowed_http_ips
+
+    # --------------------------------
+    # Pre-flight checks
+    - name: Test DNS resolution
+      shell: nslookup download.docker.com
+      register: dns_test
+      failed_when: false
+      changed_when: false
+      
+    - name: Warn about DNS issues
+      debug:
+        msg: "WARNING: DNS resolution failed. This might cause package installation issues."
+      when: dns_test.rc != 0
+
+    # --------------------------------
+    # Gather package and service facts for conditional removals
+    - name: Gather installed package facts
+      package_facts:
+        manager: auto
+
+    - name: Gather service facts
+      service_facts:
+
+    # --------------------------------
+    # Basic system updates and essential package installations
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Configure automatic security updates
+      copy:
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        content: |
+          Unattended-Upgrade::Allowed-Origins {
+              "${distro_id}:${distro_codename}-security";
+              "${distro_id}ESMApps:${distro_codename}-apps-security";
+              "${distro_id}ESM:${distro_codename}-infra-security";
+          };
+          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+          Unattended-Upgrade::MinimalSteps "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "false";
+
+    - name: Enable automatic updates
+      copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Download-Upgradeable-Packages "1";
+          APT::Periodic::AutocleanInterval "7";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    # --------------------------------
+    # Docker installation and configuration, volume setup
+    - name: Check if Docker GPG key already exists
+      stat:
+        path: /etc/apt/trusted.gpg.d/docker.gpg
+      register: docker_gpg_key
+
+    - name: Download Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+        mode: '0644'
+        force: no
+      retries: 3
+      delay: 5
+      when: not docker_gpg_key.stat.exists
+
+    - name: Convert Docker GPG key to dearmored format
+      command: >
+        gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg /usr/share/keyrings/docker-archive-keyring.gpg
+      when: not docker_gpg_key.stat.exists
+
+    - name: Remove temporary Docker GPG key file
+      file:
+        path: /usr/share/keyrings/docker-archive-keyring.gpg
+        state: absent
+      when: not docker_gpg_key.stat.exists
+
+    - name: Detect system architecture
+      set_fact:
+        docker_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+
+    - name: Add Docker repository (architecture-aware)
+      apt_repository:
+        repo: "deb [arch={{ docker_arch }} signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Add users to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Enable and start Docker service
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version_check
+      until: docker_version_check.rc == 0
+
+    - name: Set Docker Compose architecture
+      set_fact:
+        compose_arch: "{{ 'x86_64' if ansible_architecture == 'x86_64' else 'aarch64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+
+    - name: Install Docker Compose (standalone, architecture-aware)
+      get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-{{ compose_arch }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+      retries: 3
+      delay: 5
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version_check
+      until: compose_version_check.rc == 0
+
+    - name: Create data directory
+      file:
+        path: /opt/docker-data
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: docker
+        mode: '0755'
+
+    - name: Find available block devices
+      shell: |
+        for dev in /dev/sd[b-z]; do
+          if [ -b "$dev" ] && ! grep -q "$dev" /proc/mounts; then
+            echo "$dev"
+            break
+          fi
+        done
+      register: available_device
+      changed_when: false
+      failed_when: false
+
+    - name: Set device variable
+      set_fact:
+        target_device: "{{ available_device.stdout.strip() }}"
+        device_exists: "{{ available_device.stdout.strip() | length > 0 }}"
+
+    - name: Create mount point for additional volume
+      file:
+        path: /mnt/data
+        state: directory
+        mode: '0755'
+      when: device_exists
+
+    - name: Mount additional device to /mnt/data
+      mount:
+        path: /mnt/data
+        src: "{{ target_device }}"
+        fstype: ext4
+        opts: defaults
+        state: mounted
+      when: device_exists
+      ignore_errors: yes
+
+    - name: Add device to fstab for persistent mounting
+      mount:
+        path: /mnt/data
+        src: "{{ target_device }}"
+        fstype: ext4
+        opts: defaults
+        state: present
+      when: device_exists
+      ignore_errors: yes
+
+    - name: Set ownership of mounted volume
+      file:
+        path: /mnt/data
+        owner: "{{ ansible_user }}"
+        group: docker
+        mode: '0755'
+        recurse: no
+      when: device_exists
+      ignore_errors: yes
+
+    - name: Create fallback data directory when no additional volume
+      file:
+        path: /mnt/data
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: docker
+        mode: '0755'
+      when: not device_exists
+
+    - name: Configure Docker daemon for log rotation
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "20m",
+              "max-file": "5"
+            }
+          }
+      notify: restart docker
+
+    # ------------------------------------------------------
+    # Timezone configuration
+    - name: Set timezone to UTC
+      timezone:
+        name: UTC
+
+    # ------------------------------------------------------
+    # SSH and UFW configuration
+    - name: Configure SSH port
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port '
+        line: 'Port {{ ssh_port }}'
+        backup: yes
+      notify: restart ssh
+
+    - name: Configure SSH for security
+      blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          # Security hardening
+          PermitRootLogin no
+          PasswordAuthentication yes
+          PubkeyAuthentication yes
+          MaxAuthTries 3
+          ClientAliveInterval 300
+          ClientAliveCountMax 2
+          Protocol 2
+          IgnoreRhosts yes
+          HostbasedAuthentication no
+          PermitEmptyPasswords no
+          ChallengeResponseAuthentication no
+          KerberosAuthentication no
+          GSSAPIAuthentication no
+          X11Forwarding no
+          UsePAM yes
+        marker: "# {mark} ANSIBLE MANAGED SSH CONFIG"
+        backup: yes
+      notify: restart ssh
+
+    - name: Remove existing SSH conditional access configuration
+      file:
+        path: /etc/ssh/sshd_config.d/conditional_access.conf
+        state: absent
+      when: allowed_ssh_admin_ips | length > 0
+
+    - name: Create SSH conditional access configuration
+      copy:
+        dest: /etc/ssh/sshd_config.d/conditional_access.conf
+        content: |
+          # Allow password auth only from specific IPs
+          {% for ip in allowed_ssh_admin_ips %}
+          {% if ip %}
+          Match Address {{ ip }}
+              PermitRootLogin yes
+              PasswordAuthentication yes
+              PubkeyAuthentication yes
+          {% endif %}
+          {% endfor %}
+          
+          # Default: key-only authentication for all other IPs
+          Match Address *,!{{ allowed_ssh_admin_ips | join(',!') if allowed_ssh_admin_ips else '0.0.0.0/0' }}
+              PasswordAuthentication no
+              PubkeyAuthentication yes
+      when: allowed_ssh_admin_ips | length > 0
+      notify: restart ssh
+
+    - name: Reset UFW to defaults (remove all custom rules)
+      ufw:
+        state: reset
+      
+    - name: Set up UFW firewall defaults
+      ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+
+    - name: Disable IPv6 in UFW
+      lineinfile:
+        path: /etc/default/ufw
+        regexp: '^IPV6='
+        line: 'IPV6=no'
+        backup: yes
+
+    - name: Allow SSH (IPv4 only, restrictions in SSH config)
+      ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+        comment: "SSH access IPv4 only (see SSH config for restrictions)"
+
+    - name: Allow HTTP and HTTPS from specific IPs on 80-85, 443
+      ufw:
+        rule: allow
+        port: "{{ item.0 }}"
+        proto: tcp
+        src: "{{ item.1 }}"
+        comment: "HTTP/HTTPS access from {{ item.1 }}"
+      loop: "{{ ['80', '81', '82', '83', '84', '85', '443'] | product(allowed_http_ips) | list }}"
+      when: allowed_http_ips | length > 0
+
+    - name: Allow HTTP and HTTPS from all IPs (when no restrictions) on 80-85, 443
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        comment: "HTTP/HTTPS access (unrestricted)"
+      loop:
+        - "80"
+        - "81"
+        - "82"
+        - "83"
+        - "84"
+        - "85"
+        - "443"
+      when: allowed_http_ips | length == 0
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Configure fail2ban for SSH
+      copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [sshd]
+          enabled = true
+          port = {{ ssh_port }}
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 3
+          bantime = 3600
+          findtime = 600
+        backup: yes
+      notify: restart fail2ban
+   
+    # ------------------------------------------------------
+    # Disable/remove Ubuntu cloud/telemetry/background services
+    - name: Remove cloud-init
+      apt:
+        name: cloud-init
+        state: absent
+        purge: yes
+      when: "'cloud-init' in ansible_facts.packages"
+      ignore_errors: yes
+
+    - name: Check if snapd is installed
+      command: which snap
+      register: snap_check
+      changed_when: false
+      failed_when: false
+
+    - name: Get list of installed snaps
+      command: snap list
+      register: snap_list
+      when: snap_check.rc == 0
+      changed_when: false
+      failed_when: false
+
+    - name: Remove canonical-livepatch
+      snap:
+        name: canonical-livepatch
+        state: absent
+      when: 
+        - snap_check.rc == 0
+        - snap_list.stdout is defined
+        - "'canonical-livepatch' in snap_list.stdout"
+      ignore_errors: yes
+
+    - name: Remove snapd
+      apt:
+        name: snapd
+        state: absent
+        purge: yes
+      when: "'snapd' in ansible_facts.packages"
+      ignore_errors: yes
+
+    - name: Remove popularity-contest
+      apt:
+        name: popularity-contest
+        state: absent
+        purge: yes
+      when: "'popularity-contest' in ansible_facts.packages"
+      ignore_errors: yes
+
+    - name: Disable apport crash reporting
+      lineinfile:
+        path: /etc/default/apport
+        regexp: '^enabled='
+        line: 'enabled=0'
+      when: ansible_facts['distribution'] == 'Ubuntu'
+      ignore_errors: yes
+
+    - name: Stop and disable apport service
+      systemd:
+        name: apport.service
+        enabled: no
+        state: stopped
+        masked: yes
+      when: "'apport.service' in ansible_facts.services"
+      ignore_errors: yes
+
+    - name: Stop and disable whoopsie
+      systemd:
+        name: whoopsie.service
+        enabled: no
+        state: stopped
+        masked: yes
+      when: "'whoopsie.service' in ansible_facts.services"
+      ignore_errors: yes
+
+    - name: Disable motd-news
+      file:
+        path: /etc/update-motd.d/50-motd-news
+        mode: '0644'
+        state: absent
+      when: ansible_facts['distribution'] == 'Ubuntu'
+      ignore_errors: yes
+
+    - name: Disable Ubuntu Pro/Advantage apt news
+      command: pro config set apt_news=false
+      when: ansible_facts['distribution'] == 'Ubuntu'
+      ignore_errors: yes
+
+
+    # ------------------------------------------------------
+    # Final summary
+    - name: Show setup summary
+      debug:
+        msg:
+          - "VPS setup completed successfully!"
+          - "System architecture: {{ ansible_architecture }} (Docker: {{ docker_arch }}, Compose: {{ compose_arch }})"
+          - "Docker and Docker Compose installed"
+          - "UFW firewall configured"
+          - "SSH port: {{ ssh_port }}"
+          - "SSH login/password access restricted to: {{ allowed_ssh_admin_ips | join(', ') if allowed_ssh_admin_ips else 'ALL IPs (restrictions in conditions)' }}"
+          - "HTTP/HTTPS access restricted to: {{ allowed_http_ips | join(', ') if allowed_http_ips else 'ALL IPs (unrestricted)' }}"
+          - "Fail2ban configured for SSH protection"
+          - "Automatic security updates enabled"
+          - "Data directory: /opt/docker-data"
+          - "Additional volume: {{ '/mnt/data mounted from ' + target_device if device_exists else '/mnt/data created as regular directory (no additional block device found)' }}"
+          - "Cloud/telemetry services removed/disabled where applicable"
+
+  handlers:
+    - name: restart ssh
+      systemd:
+        name: ssh
+        state: restarted
+
+    - name: restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted

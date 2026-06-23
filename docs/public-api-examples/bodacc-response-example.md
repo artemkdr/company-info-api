@@ -1,0 +1,83 @@
+```json
+{
+"total_count":2,
+"results":[
+{
+"id":"A20240010265",
+"publicationavis":"A",
+"parution":"20240010",
+"dateparution":"2024-01-16",
+"numeroannonce":265,
+"typeavis":"annonce",
+"typeavis_lib":"Avis initial",
+"familleavis":"vente",
+"familleavis_lib":"Ventes et cessions",
+"numerodepartement":"14",
+"departement_nom_officiel":"Calvados",
+"region_code":28,
+"region_nom_officiel":"Normandie",
+"tribunal":"Greffe du Tribunal de Commerce de Caen",
+"commercant":"SLR AUTOMOBILE, VALLIER, Joseph",
+"ville":"Croisilles",
+"registre":[
+"982 219 255",
+"982219255",
+"332 141 225",
+"332141225"
+],
+"cp":"14220",
+"pdf_parution_subfolder":0,
+"ispdf_unitaire":"oui",
+"listepersonnes":"{"personne": {"typePersonne": "pm", "numeroImmatriculation": {"numeroIdentification": "982 219 255", "codeRCS": "RCS", "nomGreffeImmat": "Caen"}, "denomination": "SLR AUTOMOBILE", "formeJuridique": "Société à responsabilité limitée", "capital": {"montantCapital": "10000.00", "devise": "EUR"}, "administration": "Gérant : LE RAZ Florian, Bernard, Louis", "adresseSiegeSocial": {"numeroVoie": "12", "typeVoie": "Route", "nomVoie": "de Caen", "codePostal": "14220", "ville": "Croisilles"}}}",
+"listeetablissements":"{"etablissement": {"origineFonds": "siège et établissement principal acquis par achat au prix stipulé de 80000.00 euros", "qualiteEtablissement": "siège et établissement principal", "activite": "achat, vente, véhicules neufs, occasion, réparation auto, machines agricoles", "adresse": {"numeroVoie": "12", "typeVoie": "Route", "nomVoie": "de Caen", "codePostal": "14220", "ville": "Croisilles"}}}",
+"jugement":null,
+"acte":"{"descriptif": "mise en activité de la société sur achat ou apport. Acte en date du 22/12/2023 enregistré au SPFE Caen 1 le 29/12/2023 sous le numéro 2024 00000753 référence 1404P01 2023 A 04365 Adresse de l'ancien propriétaire: la Pillière 14220 Croisilles", "dateCommencementActivite": "2024-01-10", "vente": {"categorieVente": "Mise en activité d'une société suite à achat", "publiciteLegale": {"titre": "La Manche Libre", "date": "2024-01-20"}, "opposition": "Election de domicile : SELARL LEBAILLY-DUREL 646 Route des Digues Euphorbe Bp 36 14123 Fleury-sur-Orne pour la validité et Opposition dans les 10 jours suivant la dernière en date des publications prévues à l'article L141-12 du Code de Commerce."}}",
+"modificationsgenerales":null,
+"radiationaurcs":null,
+"depot":null,
+"listeprecedentexploitant":null,
+"listeprecedentproprietaire":"{"personne": {"typePersonne": "pp", "numeroImmatriculation": {"numeroIdentification": "332 141 225", "codeRCS": "RCS", "nomGreffeImmat": "Caen"}, "nom": "VALLIER", "prenom": "Joseph"}}",
+"divers":null,
+"parutionavisprecedent":null,
+"url_complete":"https://www.bodacc.fr/pages/annonces-commerciales-detail/?q.id=id:A20240010265"
+},
+{
+"id":"B20240015445",
+"publicationavis":"B",
+"parution":"20240015",
+"dateparution":"2024-01-23",
+"numeroannonce":445,
+"typeavis":"annonce",
+"typeavis_lib":"Avis initial",
+"familleavis":"radiation",
+"familleavis_lib":"Radiations",
+"numerodepartement":"14",
+"departement_nom_officiel":"Calvados",
+"region_code":28,
+"region_nom_officiel":"Normandie",
+"tribunal":"Greffe du Tribunal de Commerce de Caen",
+"commercant":"VALLIER, Joseph",
+"ville":"Croisilles",
+"registre":[
+"332 141 225",
+"332141225"
+],
+"cp":"14220",
+"pdf_parution_subfolder":0,
+"ispdf_unitaire":"oui",
+"listepersonnes":"{"personne": {"typePersonne": "pp", "numeroImmatriculation": {"numeroIdentification": "332 141 225", "codeRCS": "RCS", "nomGreffeImmat": "Caen"}, "nom": "VALLIER", "prenom": "Joseph", "activite": "Achat vente véhiculés neufs Occassion réparation auto machines agricoles", "adressePP": {"typeVoie": "Route", "nomVoie": "de Caen", "codePostal": "14220", "ville": "Croisilles"}}}",
+"listeetablissements":null,
+"jugement":null,
+"acte":null,
+"modificationsgenerales":null,
+"radiationaurcs":"{"dateCessationActivitePP": "2023-12-31", "commentaire": "Radiation"}",
+"depot":null,
+"listeprecedentexploitant":null,
+"listeprecedentproprietaire":null,
+"divers":null,
+"parutionavisprecedent":null,
+"url_complete":"https://www.bodacc.fr/pages/annonces-commerciales-detail/?q.id=id:B20240015445"
+}
+]
+}
+```
