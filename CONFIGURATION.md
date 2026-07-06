@@ -4,6 +4,9 @@ All configuration is managed through `appsettings.json` (and environment-specifi
 
 ## Development Setup
 
+### Install .net9
+You need to install .net9.
+
 ### Restore tools
 To restore the .NET tools and first setup, run:
 ```bash
