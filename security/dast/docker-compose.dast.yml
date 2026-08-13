@@ -49,7 +49,7 @@ services:
     # Using API scan mode with OpenAPI spec discovery
     command: [
       "zap-api-scan.py",
-      "-t", "http://api:5000/swagger/v1/swagger.json",
+      "-t", "http://api:5000/swagger/1.0/swagger.json",
       "-f", "openapi",
       "-r", "report.html",
       "-J", "report.json",

@@ -41,7 +41,7 @@ If you have the API running elsewhere:
 
 ```bash
 chmod +x run-zap.sh
-./run-zap.sh --openapi http://localhost:8080/swagger/v1/swagger.json
+./run-zap.sh --openapi http://localhost:5000/swagger/1.0/swagger.json
 ```
 
 ## Usage Options
@@ -50,7 +50,7 @@ chmod +x run-zap.sh
 
 ```bash
 # From URL
-./run-zap.sh --openapi http://localhost:8080/swagger/v1/swagger.json
+./run-zap.sh --openapi http://localhost:5000/swagger/1.0/swagger.json
 
 # From local file
 ./run-zap.sh --openapi ./swagger.json
@@ -65,19 +65,19 @@ chmod +x run-zap.sh
 ### With API key authentication
 
 ```bash
-./run-zap.sh --openapi http://localhost:8080/swagger/v1/swagger.json --api-key your-api-key
+./run-zap.sh --openapi http://localhost:5000/swagger/1.0/swagger.json --api-key your-api-key
 ```
 
 ### Custom scan policy
 
 ```bash
-./run-zap.sh --openapi http://localhost:8080/swagger/v1/swagger.json --policy ./custom.policy
+./run-zap.sh --openapi http://localhost:5000/swagger/1.0/swagger.json --policy ./custom.policy
 ```
 
 ### Different report formats
 
 ```bash
-./run-zap.sh --openapi http://localhost:8080/swagger/v1/swagger.json --report-format json
+./run-zap.sh --openapi http://localhost:5000/swagger/1.0/swagger.json --report-format json
 ```
 
 ## Script Options
@@ -126,7 +126,7 @@ zap-dast:
     ZAP_I_KNOW_WHAT_IM_DOING: "true"
   script:
     - chmod +x ./run-zap.sh
-    - ./run-zap.sh --openapi http://app:8080/swagger/v1/swagger.json --api-key "$ZAP_DAST_API_KEY" --network "host"
+    - ./run-zap.sh --openapi http://app:8080/swagger/1.0/swagger.json --api-key "$ZAP_DAST_API_KEY" --network "host"
   artifacts:
     when: always
     paths:

@@ -7,7 +7,7 @@ zap-dast:
     ZAP_I_KNOW_WHAT_IM_DOING: "true"
   script:
     - chmod +x ./run-zap.sh
-    - ./run-zap.sh --openapi http://app:8080/swagger/v1/swagger.json --api-key "$ZAP_DAST_API_KEY" --network "host"
+    - ./run-zap.sh --openapi http://app:8080/swagger/1.0/swagger.json --api-key "$ZAP_DAST_API_KEY" --network "host"
   artifacts:
     when: always
     paths:
