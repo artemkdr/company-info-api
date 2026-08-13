@@ -1,0 +1,63 @@
+# Docker Compose for ZAP DAST scanning
+# This configuration runs:
+# 1. The CompanyInfo API service in a container
+# 2. OWASP ZAP scanner that targets the API
+# 3. Generates security reports to the ./reports directory
+
+services:
+  # Company Info API Service (ephemeral for scanning)
+  api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: production
+    image: company-info-api:dast
+    # Expose API port internally (not to host)
+    expose:
+      - "5000"
+    # Health check to ensure API is ready before ZAP starts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    # Environment variables for DAST scanning
+    environment:
+      # Disable external API keys for safer scanning
+      # (API will return mock/error responses for external calls)
+      ExternalApis__Insee__ApiKey: ""
+      # Set logging to warning level to reduce noise
+      Logging__LogLevel__Default: "Warning"
+    networks:
+      - dast-network
+
+  # OWASP ZAP Scanner
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    # Depends on API being healthy before starting scan
+    depends_on:
+      api:
+        condition: service_healthy
+    # Volumes for reports and policies
+    volumes:
+      - ./reports:/zap/wrk:rw
+    # Network to access the API service
+    networks:
+      - dast-network
+    # Command to run ZAP scan against the API
+    # Using API scan mode with OpenAPI spec discovery
+    command: [
+      "zap-api-scan.py",
+      "-t", "http://api:5000/swagger/v1/swagger.json",
+      "-f", "openapi",
+      "-r", "report.html",
+      "-J", "report.json",
+      "-x", "report.xml",
+      # Enable both passive and active scanning
+      "-d"  # Enable debug mode for more verbose output
+    ]
+
+networks:
+  dast-network:
+    driver: bridge
