@@ -68,6 +68,7 @@ builder
 var app = builder.Build();
 
 // Middleware pipeline
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Swagger (available in all environments)
