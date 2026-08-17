@@ -41,14 +41,14 @@ STATE 6: TRIAGE RUNNER ─────── Execute deterministic regex/rule tr
 
 ## 4. Phase 2 — Safety Pre-flight (Dynamic Inspection)
 
-Safety checks are strictly **dynamic** and execute post-boot but BEFORE ZAP initiates. 
+Safety checks are strictly **dynamic** and execute post-boot but BEFORE execution of the scan passes. 
 
 ```yaml
 runtime_preflight:
   required_for: [pass_1_baseline, pass_2_enriched, CI]
   execution_phase: post-container-boot, pre-zap-launch
   verify:
-    - "Schema Validation: Validate generated zap-af-baseline.yaml and zap-af-enriched.yaml against the official ZAP AF JSON schema using a local validator (e.g., ajv-cli). Fail immediately on syntax or schema errors."
+    - "Native Validation: Validate generated zap-af-baseline.yaml and zap-af-enriched.yaml using ZAP's native `-autocheck` flag (e.g., `zap.sh -cmd -autocheck /zap/wrk/config/zap-af-baseline.yaml`). Fail immediately on syntax or structural errors."
     - "Dynamic network inspect: Ensure target container has no host network mappings."
     - "Dynamic port inspect: Ensure no host-bound published ports (e.g., 0.0.0.0:8080)."
     - "Volume inspect: Verify DB containers are using tmpfs or isolated, ephemeral volumes."
@@ -86,7 +86,7 @@ zap-dast/
 │   ├── zap-af-enriched.yaml     # Pass 2: Targets auth-proxy, full methods, replacers, OAST
 │   └── openapi-enriched.yaml    # Native OpenAPI spec with injected valid example data
 ├── scripts/
-│   ├── preflight.sh             # Dynamic daemon inspection + YAML schema validation
+│   ├── preflight.sh             # Dynamic daemon inspection + native ZAP AF autocheck validation
 │   └── triage-report.py         # Post-scan JSON parser
 ├── reports/
 │   └── <scan-id>/               # Immutable raw HTML/JSON and triaged JSON
@@ -164,7 +164,7 @@ TASK: Output a Threat Model JSON containing priority attack vectors, inferred au
 
 ```text
 ROLE: Ensure the test environment cannot harm external systems or host infrastructure.
-TASK: Generate `docker-compose.yaml` utilizing tmpfs/ephemeral configurations. ALWAYS include a `zap-auth-proxy` sidecar service (Nginx/Envoy/Node) to inject credentials and route to the target API. Generate `scripts/preflight.sh` containing YAML schema validation (`ajv-cli`) and dynamic Docker daemon inspection commands.
+TASK: Generate `docker-compose.yaml` utilizing tmpfs/ephemeral configurations. ALWAYS include a `zap-auth-proxy` sidecar service (Nginx/Envoy/Node) to inject credentials and route to the target API. Generate `scripts/preflight.sh` containing AF plan validation using ZAP's native `-cmd -autocheck` flag and dynamic Docker daemon inspection commands.
 ```
 
 ### Agent 3: ZAP AF Compiler
@@ -173,5 +173,5 @@ TASK: Generate `docker-compose.yaml` utilizing tmpfs/ephemeral configurations. A
 ROLE: Translate the Threat Model into strictly valid ZAP Automation Framework (AF) YAML plans.
 TASK: Generate `zap-af-baseline.yaml` and `zap-af-enriched.yaml`. Map Threat Model suppressions to `alertFilter` jobs. Map valid parameters into `openapi-enriched.yaml`. Enable OAST for SSRF. 
 CONSTRAINT 1: Enriched pass targetUrl MUST point to the `zap-auth-proxy`, never configure ZAP native authentication jobs.
-CONSTRAINT 2: Output MUST strictly adhere to the official ZAP AF YAML schema to pass automated preflight validation.
+CONSTRAINT 2: Output MUST strictly adhere to the ZAP AF YAML structure to pass automated preflight `-autocheck` validation.
 ```
