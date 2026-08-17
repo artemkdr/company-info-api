@@ -107,12 +107,12 @@ def triage(report_path, threat_model_path):
         return 0
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: triage-report.py <report.json>")
+    if len(sys.argv) < 3:
+        print("Usage: triage-report.py <report.json> <threat-model.json>")
         sys.exit(1)
 
     report_path = Path(sys.argv[1])
-    threat_model_path = report_path.parent.parent / 'threat-model.json'
+    threat_model_path = Path(sys.argv[2])
 
     if not report_path.exists():
         print(f"ERROR: Report file not found: {report_path}")
