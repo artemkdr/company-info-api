@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  target:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: production
+    container_name: company-info-api
+    environment:
+      ApiKeys__0: "test-api-key-12345"
+      ExternalApis__Insee__ApiKey: "test-insee-key"
+      ExternalApis__Insee__BaseUrl: "http://mock-upstreams:8081"
+      ExternalApis__ChIde__BaseUrl: "http://mock-upstreams:8082"
+      ExternalApis__Bodacc__BaseUrl: "http://mock-upstreams:8083"
+      ExternalApis__OpenIban__BaseUrl: "http://mock-upstreams:8084"
+      Iban:RegistryFilePath: /app/iban-registry.txt
+    ports:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-H", "X-Api-Key: test-api-key-12345", "http://localhost:5000/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - zap-dast-network
+    depends_on:
+      - mock-upstreams
+
+  mock-upstreams:
+    image: nginx:alpine
+    container_name: mock-upstreams
+    volumes:
+      - ./mock-upstreams/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8081"
+      - "8082"
+      - "8083"
+      - "8084"
+      - "8085"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8085/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - zap-dast-network
+
+  zap-auth-proxy:
+    image: nginx:alpine
+    container_name: zap-auth-proxy
+    volumes:
+      - ./auth-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - zap-dast-network
+    depends_on:
+      target:
+        condition: service_healthy
+
+networks:
+  zap-dast-network:
+    driver: bridge

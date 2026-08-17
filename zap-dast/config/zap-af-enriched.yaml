@@ -1,0 +1,54 @@
+env:
+  contexts: {}
+  parameters: {}
+  vars: {}
+
+jobs:
+  - parameters:
+      swaggerUrl: "file:///zap/wrk/config/openapi-enriched.json"
+    name: openapi
+    type: openapi
+
+  - parameters:
+      method: GET
+      url: "http://zap-auth-proxy:80"
+    type: spider
+
+  - parameters:
+      headername: "X-Test-Header"
+      headervalue: "test-value"
+    name: replacer
+    type: replacer
+
+  - parameters:
+      method: GET
+      policy: "Default Policy"
+      url: "http://zap-auth-proxy:80"
+      addOns: ["oast"]
+    name: activeScan
+    type: activeScan
+
+  - parameters:
+      ruleId: 3
+      action: SUPPRESS
+    name: alertFilter_sessioncookie
+    type: alertFilter
+
+  - parameters:
+      ruleId: 6
+      action: DOWNGRADE
+      urlPattern: "/api/v1/health"
+    name: alertFilter_xframe
+    type: alertFilter
+
+  - parameters:
+      ruleId: 10098
+      action: SUPPRESS
+    name: alertFilter_xss
+    type: alertFilter
+
+  - parameters:
+      reportfile: "/zap/wrk/reports/report.enriched.json"
+      reporttype: "json"
+    name: report
+    type: report

@@ -1,0 +1,85 @@
+{
+  "target": "CompanyInfo.Api",
+  "archetypes": ["Data Aggregator", "Orchestrator Proxy"],
+  "priority_vectors": [
+    "Injection into external API URL construction (SSRF-like)",
+    "Input validation bypass on format validators (SIREN, IBAN, SIRET, VAT, UID)",
+    "Authentication bypass when ApiKeys array is empty or misconfigured",
+    "Information disclosure via error messages or response metadata"
+  ],
+  "coverage_gaps": [
+    "SQL Injection (no database)",
+    "CSRF (no session/cookie auth)",
+    "File upload vulnerabilities (no file upload endpoints)",
+    "Race conditions (stateless, no shared mutable state)"
+  ],
+  "external_apis": [
+    {
+      "name": "INSEE",
+      "baseUrl": "http://mock-upstreams:8081",
+      "riskLevel": "medium",
+      "note": "Proxies calls to French establishment registry"
+    },
+    {
+      "name": "VIES",
+      "baseUrl": "http://mock-upstreams:8082",
+      "riskLevel": "medium",
+      "note": "Proxies VAT number validation to EU VIES"
+    },
+    {
+      "name": "ChIde",
+      "baseUrl": "http://mock-upstreams:8083",
+      "riskLevel": "low",
+      "note": "Proxies Swiss company UID validation"
+    },
+    {
+      "name": "BODACC",
+      "baseUrl": "http://mock-upstreams:8084",
+      "riskLevel": "medium",
+      "note": "Proxies searches to OpenDataSoft BODACC"
+    },
+    {
+      "name": "OpenIban",
+      "baseUrl": "http://mock-upstreams:8085",
+      "riskLevel": "low",
+      "note": "Proxies IBAN validation checks"
+    }
+  ],
+  "authentication": {
+    "scheme": "X-Api-Key header",
+    "note": "Single header-based API key auth. Auto-succeeds anonymously if ApiKeys array is empty or misconfigured.",
+    "test_key": "test-api-key-12345"
+  },
+  "false_positive_rules": [
+    {
+      "rule_id": 3,
+      "rule_name": "Session Cookie (Secure flag)",
+      "url_regex": ".*",
+      "action": "SUPPRESS",
+      "reason": "No session/cookie authentication used"
+    },
+    {
+      "rule_id": 6,
+      "rule_name": "X-Frame-Options header missing",
+      "url_regex": "/api/v1/health",
+      "action": "DOWNGRADE",
+      "reason": "Health endpoint is intentionally public"
+    },
+    {
+      "rule_id": 10098,
+      "rule_name": "Cross-Site Scripting (Reflected)",
+      "url_regex": "/api/v1/.*",
+      "action": "SUPPRESS",
+      "reason": "JSON-only API, no HTML rendering context"
+    }
+  ],
+  "attack_surface_summary": "GET-only REST API with 6 exposed endpoints plus health check, all requiring X-Api-Key header except health. Thin input validation on structured identifiers (SIREN, IBAN, SIRET, VAT, UID). External HTTP/SOAP calls to 5 upstream registries. No database, no file upload, no stateful operations.",
+  "test_values": {
+    "siren": "123456789",
+    "iban": "DE89370400440532013000",
+    "vat_number": "FR12345678901",
+    "uid": "CHE123456789",
+    "siret": "12345678901234",
+    "company_name": "Test Company"
+  }
+}

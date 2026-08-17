@@ -1,0 +1,112 @@
+name: ZAP DAST Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_profile:
+        description: 'Scan profile (baseline=safe methods only, enriched=full auth+OAST, both=sequential)'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - baseline
+          - enriched
+          - both
+
+permissions:
+  contents: read
+  artifacts: write
+
+jobs:
+  zap-dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Boot test environment
+        working-directory: zap-dast
+        run: |
+          docker compose up -d --build
+          echo "Waiting for services to be healthy..."
+          docker compose wait 2>/dev/null || {
+            echo "Services may not support wait; polling manually..."
+            for i in {1..60}; do
+              if docker compose ps --services --filter "status=running" | wc -l | grep -q "3"; then
+                echo "All 3 services are running"
+                sleep 5
+                break
+              fi
+              sleep 1
+            done
+          }
+          docker compose ps
+
+      - name: Generate enriched OpenAPI spec
+        working-directory: zap-dast
+        run: |
+          chmod +x ./scripts/generate-openapi.sh
+          ./scripts/generate-openapi.sh
+
+      - name: Run preflight checks
+        working-directory: zap-dast
+        run: |
+          chmod +x ./scripts/preflight.sh
+          ./scripts/preflight.sh
+
+      - name: Run baseline scan
+        if: ${{ github.event.inputs.scan_profile == 'baseline' || github.event.inputs.scan_profile == 'both' }}
+        working-directory: zap-dast
+        run: |
+          mkdir -p reports
+          docker run --rm \
+            -v $(pwd):/zap/wrk:rw \
+            --network zap-dast_zap-dast-network \
+            --add-host=host.docker.internal:host-gateway \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -autorun /zap/wrk/config/zap-af-baseline.yaml
+          echo "Baseline scan complete. Report: reports/report.baseline.json"
+
+      - name: Run enriched scan
+        if: ${{ github.event.inputs.scan_profile == 'enriched' || github.event.inputs.scan_profile == 'both' }}
+        working-directory: zap-dast
+        run: |
+          mkdir -p reports
+          docker run --rm \
+            -v $(pwd):/zap/wrk:rw \
+            --network zap-dast_zap-dast-network \
+            --add-host=host.docker.internal:host-gateway \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -autorun /zap/wrk/config/zap-af-enriched.yaml
+          echo "Enriched scan complete. Report: reports/report.enriched.json"
+
+      - name: Triage results
+        working-directory: zap-dast
+        if: always()
+        run: |
+          chmod +x ./scripts/triage-report.py
+          python3 ./scripts/triage-report.py ./reports/report.enriched.json || {
+            EXIT_CODE=$?
+            echo "Triage exited with code $EXIT_CODE"
+            exit $EXIT_CODE
+          }
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-dast-reports
+          path: zap-dast/reports/
+          retention-days: 30
+
+      - name: Clean up
+        if: always()
+        working-directory: zap-dast
+        run: |
+          docker compose down -v || true
+          docker compose logs --tail=50 || true

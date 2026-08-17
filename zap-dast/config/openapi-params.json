@@ -1,0 +1,27 @@
+{
+  "components": {
+    "parameters": {
+      "siren": {
+        "example": "123456789"
+      },
+      "iban": {
+        "example": "DE89370400440532013000"
+      },
+      "vatNumber": {
+        "example": "FR12345678901"
+      },
+      "uid": {
+        "example": "CHE123456789"
+      },
+      "siret": {
+        "example": "12345678901234"
+      },
+      "companyName": {
+        "example": "Test Company"
+      },
+      "registrationNumber": {
+        "example": "123456789"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+env:
+  contexts: {}
+  parameters: {}
+  vars: {}
+
+jobs:
+  - parameters:
+      swaggerUrl: "file:///zap/wrk/config/openapi-enriched.json"
+    name: openapi
+    type: openapi
+
+  - parameters:
+      method: GET
+      url: "http://zap-auth-proxy:80"
+    type: spider
+
+  - parameters:
+      method: GET
+      policy: "Default Policy"
+      url: "http://zap-auth-proxy:80"
+    name: activeScan
+    type: activeScan
+
+  - parameters:
+      reportfile: "/zap/wrk/reports/report.baseline.json"
+      reporttype: "json"
+    name: report
+    type: report
