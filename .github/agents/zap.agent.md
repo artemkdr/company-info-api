@@ -90,12 +90,14 @@ zap-dast/
 │   ├── generate-openapi.sh      # Generate enriched OpenAPI spec
 │   ├── preflight.sh             # Pre-flight validation: containers, isolation, AF syntax
 │   └── triage-report.py         # Post-scan triage: applies threat-model rules
-├── reports/
-│   ├── report-baseline.html     # HTML report from baseline scan
-│   ├── report-baseline.json     # JSON report from baseline scan
-│   ├── report-enriched.html     # HTML report from enriched scan
-│   ├── report-enriched.json     # JSON report from enriched scan (input to triage)
-│   └── report-enriched.triaged.json  # Triaged JSON with suppressions applied
+├── reports/                      # Scan output directory (gitignored)
+│   └── YYYY-MM-DD-HH:MM:SS-baseline/   # Timestamped baseline scan
+│       ├── report-baseline.html        # HTML report from baseline scan
+│       └── report-baseline.json        # JSON report from baseline scan
+│   └── YYYY-MM-DD-HH:MM:SS-enriched/   # Timestamped enriched scan
+│       ├── report-enriched.html        # HTML report from enriched scan
+│       ├── report-enriched.json        # JSON report from enriched scan (input to triage)
+│       └── report-enriched.triaged.json  # Triaged JSON with suppressions applied
 └── README.md
 ```
 

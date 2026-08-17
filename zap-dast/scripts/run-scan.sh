@@ -1,66 +1,66 @@
 #!/bin/bash
 set -euo pipefail
 
-# Helper script to run baseline and enriched scans with timestamped report directories
-# Usage: ./scripts/run-scan.sh [baseline|enriched|both]
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCAN_TYPE="${1:-both}"
 
-# Generate timestamp: YYYY-MM-DD-HH:MM:SS
-SCAN_TIMESTAMP=$(date +%Y-%m-%d-%H:%M:%S)
-export SCAN_TIMESTAMP
+# Generate timestamp: YYYY-MM-DD-HHMMSS
+SCAN_TIMESTAMP=$(date +%Y-%m-%d-%H%M%S)
 
 echo "Scan timestamp: $SCAN_TIMESTAMP"
 echo "Reports will be saved to reports/$SCAN_TIMESTAMP-{baseline,enriched}/"
 echo
 
-run_baseline() {
-  echo "=== Running Baseline Scan ==="
-  mkdir -p "$SCRIPT_DIR/reports/$SCAN_TIMESTAMP-baseline"
-  docker run --rm \
-    -v "$SCRIPT_DIR:/zap/wrk:rw" \
-    -e SCAN_TIMESTAMP="$SCAN_TIMESTAMP" \
-    --network zap-dast_zap-dast-network \
-    ghcr.io/zaproxy/zaproxy:stable \
-    zap.sh -cmd -autorun /zap/wrk/config/zap-af-baseline.yaml
-  echo "✓ Baseline scan complete"
-}
+run_scan() {
+  local scan_type=$1
+  local yaml_file=$2
+  local report_subdir=$3
 
-run_enriched() {
-  echo "=== Running Enriched Scan ==="
-  mkdir -p "$SCRIPT_DIR/reports/$SCAN_TIMESTAMP-enriched"
+  echo "=== Running $scan_type Scan ==="
+  local report_path="$SCRIPT_DIR/reports/$SCAN_TIMESTAMP-$report_subdir"
+  mkdir -p "$report_path"
+
+  # Create temporary YAML with timestamp substituted
+  local tmp_yaml="/tmp/zap-$scan_type-$SCAN_TIMESTAMP.yaml"
+  sed "s|\${SCAN_TIMESTAMP}|$SCAN_TIMESTAMP|g" "$SCRIPT_DIR/config/$yaml_file" > "$tmp_yaml"
+
+  # Run ZAP scan
   docker run --rm \
     -v "$SCRIPT_DIR:/zap/wrk:rw" \
-    -e SCAN_TIMESTAMP="$SCAN_TIMESTAMP" \
+    -v "$tmp_yaml:/tmp/zap-config.yaml:ro" \
     --network zap-dast_zap-dast-network \
     ghcr.io/zaproxy/zaproxy:stable \
-    zap.sh -cmd -autorun /zap/wrk/config/zap-af-enriched.yaml
-  echo "✓ Enriched scan complete"
+    zap.sh -cmd -autorun /tmp/zap-config.yaml
+
+  rm -f "$tmp_yaml"
+  echo "✓ $scan_type scan complete"
+  echo
 }
 
 run_triage() {
-  ENRICHED_REPORT="$SCRIPT_DIR/reports/$SCAN_TIMESTAMP-enriched/report-enriched.json"
-  if [ -f "$ENRICHED_REPORT" ]; then
-    echo "=== Running Triage ==="
-    python3 "$SCRIPT_DIR/scripts/triage-report.py" "$ENRICHED_REPORT"
-  else
-    echo "⚠ Enriched JSON report not found at $ENRICHED_REPORT, skipping triage"
+  local enriched_json="$SCRIPT_DIR/reports/$SCAN_TIMESTAMP-enriched/report-enriched.json"
+
+  if [ ! -f "$enriched_json" ]; then
+    echo "⚠ Enriched JSON report not found at $enriched_json, skipping triage"
+    return 1
   fi
+
+  echo "=== Running Triage ==="
+  python3 "$SCRIPT_DIR/scripts/triage-report.py" "$enriched_json"
+  echo
 }
 
-case "$SCAN_TYPE" in
+# Main logic
+case "${1:-both}" in
   baseline)
-    run_baseline
+    run_scan "Baseline" "zap-af-baseline.yaml" "baseline"
     ;;
   enriched)
-    run_enriched
+    run_scan "Enriched" "zap-af-enriched.yaml" "enriched"
+    run_triage
     ;;
   both)
-    run_baseline
-    echo
-    run_enriched
-    echo
+    run_scan "Baseline" "zap-af-baseline.yaml" "baseline"
+    run_scan "Enriched" "zap-af-enriched.yaml" "enriched"
     run_triage
     ;;
   *)
@@ -69,5 +69,4 @@ case "$SCAN_TYPE" in
     ;;
 esac
 
-echo
 echo "Reports saved to: $SCRIPT_DIR/reports/$SCAN_TIMESTAMP-{baseline,enriched}/"
