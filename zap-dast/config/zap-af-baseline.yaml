@@ -4,25 +4,27 @@ env:
   vars: {}
 
 jobs:
-  - parameters:
-      swaggerUrl: "file:///zap/wrk/config/openapi-enriched.json"
-    name: openapi
+  - name: openapi
     type: openapi
+    parameters:
+      url: "file:///zap/wrk/config/openapi-enriched.json"
 
-  - parameters:
-      method: GET
-      url: "http://zap-auth-proxy:80"
+  - name: spider
     type: spider
-
-  - parameters:
-      method: GET
-      policy: "Default Policy"
+    parameters:
       url: "http://zap-auth-proxy:80"
-    name: activeScan
-    type: activeScan
+      maxDepth: 2
+      maxChildren: 0
 
-  - parameters:
-      reportfile: "/zap/wrk/reports/report.baseline.json"
-      reporttype: "json"
-    name: report
+  - name: activeScan
+    type: activeScan
+    parameters:
+      url: "http://zap-auth-proxy:80"
+      policy: "Default Policy"
+
+  - name: report
     type: report
+    parameters:
+      template: "modern"
+      reportFile: "/zap/wrk/reports/report.baseline.json"
+      reportTitle: "ZAP DAST Baseline Report"

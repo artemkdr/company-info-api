@@ -4,51 +4,59 @@ env:
   vars: {}
 
 jobs:
-  - parameters:
-      swaggerUrl: "file:///zap/wrk/config/openapi-enriched.json"
-    name: openapi
+  - name: openapi
     type: openapi
+    parameters:
+      url: "file:///zap/wrk/config/openapi-enriched.json"
 
-  - parameters:
-      method: GET
-      url: "http://zap-auth-proxy:80"
+  - name: spider
     type: spider
-
-  - parameters:
-      headername: "X-Test-Header"
-      headervalue: "test-value"
-    name: replacer
-    type: replacer
-
-  - parameters:
-      method: GET
-      policy: "Default Policy"
+    parameters:
       url: "http://zap-auth-proxy:80"
-      addOns: ["oast"]
-    name: activeScan
+      maxDepth: 2
+      maxChildren: 0
+
+  - name: replacer
+    type: replacer
+    parameters:
+      rules:
+        - description: "Add custom header for testing"
+          type: "Request-Header"
+          matchType: "REQ_HEADER"
+          matchString: "X-Test-Header"
+          replacement: "test-value"
+
+  - name: activeScan
     type: activeScan
+    parameters:
+      url: "http://zap-auth-proxy:80"
+      policy: "Default Policy"
 
-  - parameters:
-      ruleId: 3
-      action: SUPPRESS
-    name: alertFilter_sessioncookie
+  - name: alertFilter_sessioncookie
     type: alertFilter
+    parameters:
+      alertFilters:
+        - ruleId: 3
+          newRisk: "off"
 
-  - parameters:
-      ruleId: 6
-      action: DOWNGRADE
-      urlPattern: "/api/v1/health"
-    name: alertFilter_xframe
+  - name: alertFilter_xframe
     type: alertFilter
+    parameters:
+      alertFilters:
+        - ruleId: 6
+          newRisk: "informational"
+          urlRegex: ".*health.*"
 
-  - parameters:
-      ruleId: 10098
-      action: SUPPRESS
-    name: alertFilter_xss
+  - name: alertFilter_xss
     type: alertFilter
+    parameters:
+      alertFilters:
+        - ruleId: 10098
+          newRisk: "off"
 
-  - parameters:
-      reportfile: "/zap/wrk/reports/report.enriched.json"
-      reporttype: "json"
-    name: report
+  - name: report
     type: report
+    parameters:
+      template: "modern"
+      reportFile: "/zap/wrk/reports/report.enriched.json"
+      reportTitle: "ZAP DAST Enriched Report"
