@@ -1,4 +1,4 @@
-# ZAP DAST Agent — Specification v3 (AF-Native)
+# ZAP DAST Agent
 
 ## 1. Philosophy
 
