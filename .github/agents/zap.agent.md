@@ -80,16 +80,22 @@ threat_model_schema:
 
 ```text
 zap-dast/
-├── docker-compose.yaml          # Includes target, DB (tmpfs), and zap-auth-proxy Sidecar
+├── docker-compose.yaml          # Includes target, mock-upstreams, and zap-auth-proxy sidecar
 ├── config/
-│   ├── zap-af-baseline.yaml     # Pass 1: Unauthenticated, strictly safe methods
-│   ├── zap-af-enriched.yaml     # Pass 2: Targets auth-proxy, full methods, replacers, OAST
-│   └── openapi-enriched.yaml    # Native OpenAPI spec with injected valid example data
+│   ├── zap-af-baseline.yaml     # Pass 1: Unauthenticated baseline scan
+│   ├── zap-af-enriched.yaml     # Pass 2: OpenAPI-guided, alertFilters, authenticated via proxy
+│   ├── openapi-enriched.json    # Generated OpenAPI 3.0 spec with example test values
+│   └── openapi-params.json      # Test data for parameter enrichment (reserved)
 ├── scripts/
-│   ├── preflight.sh             # Dynamic daemon inspection + native ZAP AF autocheck validation
-│   └── triage-report.py         # Post-scan JSON parser
+│   ├── generate-openapi.sh      # Generate enriched OpenAPI spec
+│   ├── preflight.sh             # Pre-flight validation: containers, isolation, AF syntax
+│   └── triage-report.py         # Post-scan triage: applies threat-model rules
 ├── reports/
-│   └── <scan-id>/               # Immutable raw HTML/JSON and triaged JSON
+│   ├── report-baseline.html     # HTML report from baseline scan
+│   ├── report-baseline.json     # JSON report from baseline scan
+│   ├── report-enriched.html     # HTML report from enriched scan
+│   ├── report-enriched.json     # JSON report from enriched scan (input to triage)
+│   └── report-enriched.triaged.json  # Triaged JSON with suppressions applied
 └── README.md
 ```
 
@@ -126,11 +132,31 @@ The agent generates standard AF YAMLs conforming to ZAP's Automation Framework s
 * The proxy injects `X-Api-Key: <test-key>` header before routing to the actual API.
 
 **Important Parameter Notes:**
-* `openapi` job: uses `apiFile` (local path), `context`, `targetUrl` parameters. Imports OpenAPI spec and discovers endpoints.
-* `alertFilter` job: uses `alertFilters` list with per-filter `ruleId`, `newRisk` ('False Positive', 'Info', 'Low', 'Medium', 'High'), and optional `url`/`urlRegex` matching.
-* `spider`: uses `url` (not `method`), `maxDepth` parameters.
-* `activeScan`: uses `url` and `policy` parameters (not `method`).
-* `report`: uses `reportDir`, `reportFile`, `reportTitle` (not `reportFile` as full path). File extension determines format (`.html`, `.xml`, etc.); ZAP 2.17.0+ may have format restrictions.
+
+* `openapi` job: imports an OpenAPI specification to guide discovery
+  - `apiFile`: local file path to OpenAPI JSON spec
+  - `context`: name of the context to use (must exist in `env.contexts`)
+  - `targetUrl`: optional override of the target server URL
+  - Adds discovered endpoints to the context for scanning
+
+* `alertFilter` job: suppresses or downgrades alerts by rule ID and URL pattern
+  - `alertFilters`: list of filter rules
+  - Each filter has `ruleId` (mandatory), `newRisk` (mandatory: 'False Positive', 'Info', 'Low', 'Medium', 'High')
+  - Optional: `url` (string match) or `urlRegex` (regex match against alert URL)
+
+* `spider`: endpoint discovery from a starting URL
+  - `url`: starting URL for discovery
+  - `maxDepth`: maximum crawl depth (integer)
+
+* `activeScan`: active vulnerability scanning
+  - `url`: target URL to scan
+  - `policy`: ZAP policy name (e.g., "Default Policy")
+
+* `report`: generate scan reports
+  - `template`: report format ('traditional-html', 'traditional-json', 'modern', etc.)
+  - `reportDir`: output directory path
+  - `reportFile`: output filename (without extension if using templates)
+  - `reportTitle`: human-readable report title
 
 ## 7. Phase 5 & 6 — Execution & Post-Scan Triage
 
@@ -155,20 +181,23 @@ python3 ./scripts/triage-report.py /zap/wrk/reports/report.enriched.raw.json
 
 ### 7.2 Deterministic Triage Logic (No LLM)
 
-`triage-report.py` enforces business logic without LLM hallucinations. Reclassification is disabled.
+`triage-report.py` processes the enriched JSON report and applies threat-model rules without LLM involvement. Reclassification is deterministic based on static rules.
 
-```yaml
-triage_operations:
-  - apply_downgrades: "Based on static JSON rules generated during Threat Model phase."
-  - flag_oast: "If OAST URL is present in alert evidence, mark CONFIRMED SSRF (Critical)."
+**Triage Operations:**
+1. **Load threat-model.json** — read false-positive rules with rule IDs, URL patterns, and actions
+2. **Apply suppressions** — for each alert, check if its rule ID + URL matches a suppression rule
+   - If action is `SUPPRESS`: mark alert as `False Positive` (riskCode -1)
+   - If action is `DOWNGRADE`: lower risk level one step (High → Medium, Medium → Low, etc.)
+3. **Flag OAST findings** — check for OAST callbacks in alert evidence; if present, mark as `CONFIRMED SSRF` (Critical)
+4. **Count remaining issues** — after all rules applied, count High and Medium alerts
+5. **Determine exit code** — fail (exit 1) if any High or Medium remain; pass (exit 0) otherwise
 
-ci_pipeline_criteria:
-  fail_if:
-    - any_confirmed_high: true
-    - any_confirmed_medium: true
-  warn_only:
-    - any_low_or_info: true # Never fail pipeline on accumulation of low/info findings.
-```
+**Pass/Fail Criteria:**
+- **FAIL** (exit 1): Any alert with risk level High or Medium after triage
+- **WARN** (report, exit 0): Low and Info alerts are logged but never fail the pipeline
+- **PASS** (exit 0): No High or Medium severity findings after applying all rules
+
+The triaged report (`report-enriched.triaged.json`) is saved for review, showing each alert's original and post-triage risk level.
 
 ## 8. Multi-Agent System Prompts
 
