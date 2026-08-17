@@ -31,11 +31,13 @@ zap-dast/
 │   ├── preflight.sh              # Pre-flight validation (containers, networking, AF schema)
 │   └── triage-report.py          # Post-scan triage: applies threat-model rules, determines pass/fail
 ├── reports/                      # Scan output directory (gitignored)
-│   ├── report-baseline.html      # Baseline HTML report
-│   ├── report-baseline.json      # Baseline JSON report (for triage)
-│   ├── report-enriched.html      # Enriched HTML report
-│   ├── report-enriched.json      # Enriched JSON report (input to triage)
-│   └── report-enriched.triaged.json   # Post-triage output with suppressions applied
+│   └── YYYY-MM-DD-HH:MM:SS-baseline/   # Timestamped baseline scan
+│       ├── report-baseline.html
+│       └── report-baseline.json
+│   └── YYYY-MM-DD-HH:MM:SS-enriched/   # Timestamped enriched scan
+│       ├── report-enriched.html
+│       ├── report-enriched.json
+│       └── report-enriched.triaged.json
 └── README.md                     # This file
 ```
 
@@ -58,24 +60,21 @@ docker compose up -d --build
 # 2. Wait ~30s for containers to be healthy
 docker compose logs --follow target
 
-# 3. Run baseline scan
-docker run --rm \
-  -v $(pwd):/zap/wrk:rw \
-  --network zap-dast_zap-dast-network \
-  ghcr.io/zaproxy/zaproxy:stable \
-  zap.sh -cmd -autorun /zap/wrk/config/zap-af-baseline.yaml
+# 3. Run baseline and enriched scans with triage
+bash scripts/run-scan.sh both
 
-# 4. Run enriched scan (authenticated via proxy)
-docker run --rm \
-  -v $(pwd):/zap/wrk:rw \
-  --network zap-dast_zap-dast-network \
-  ghcr.io/zaproxy/zaproxy:stable \
-  zap.sh -cmd -autorun /zap/wrk/config/zap-af-enriched.yaml
+# Each run creates timestamped subdirectories in reports/:
+#   - reports/YYYY-MM-DD-HH:MM:SS-baseline/
+#   - reports/YYYY-MM-DD-HH:MM:SS-enriched/
 
-# 5. View reports
-# Reports are generated in HTML format in reports/ directory:
-#   - reports/report-baseline.html
-#   - reports/report-enriched.html
+# 4. View reports
+# HTML reports: open reports/YYYY-MM-DD-HH:MM:SS-{baseline,enriched}/report-*.html
+# JSON reports: reports/YYYY-MM-DD-HH:MM:SS-{baseline,enriched}/report-*.json
+# Triaged output: reports/YYYY-MM-DD-HH:MM:SS-enriched/report-enriched.triaged.json
+
+# 5. Individual scans (optional)
+bash scripts/run-scan.sh baseline  # baseline only
+bash scripts/run-scan.sh enriched  # enriched only
 
 # 6. Clean up
 docker compose down -v

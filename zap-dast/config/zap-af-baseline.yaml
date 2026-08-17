@@ -23,7 +23,7 @@ jobs:
     type: report
     parameters:
       template: "traditional-html"
-      reportDir: "/zap/wrk/reports"
+      reportDir: "/zap/wrk/reports/${SCAN_TIMESTAMP}-baseline"
       reportFile: "report-baseline.html"
       reportTitle: "ZAP DAST Baseline Scan"
 
@@ -31,6 +31,6 @@ jobs:
     type: report
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/wrk/reports"
+      reportDir: "/zap/wrk/reports/${SCAN_TIMESTAMP}-baseline"
       reportFile: "report-baseline.json"
       reportTitle: "ZAP DAST Baseline Scan"
