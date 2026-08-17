@@ -7,6 +7,13 @@ env:
   vars: {}
 
 jobs:
+  - name: openapi
+    type: openapi
+    parameters:
+      apiFile: "/zap/wrk/config/openapi-enriched.json"
+      context: "Default Context"
+      targetUrl: "http://zap-auth-proxy:80"
+
   - name: spider
     type: spider
     parameters:
@@ -19,9 +26,27 @@ jobs:
       url: "http://zap-auth-proxy:80/"
       policy: "Default Policy"
 
-  - name: report
+  - name: alertFilter
+    type: alertFilter
+    alertFilters:
+      - ruleId: 3
+        newRisk: "False Positive"
+      - ruleId: 6
+        newRisk: "Low"
+        url: "/api/v1/health"
+      - ruleId: 10098
+        newRisk: "False Positive"
+
+  - name: report-html
     type: report
     parameters:
       reportDir: "/zap/wrk/reports"
-      reportFile: "report-enriched"
+      reportFile: "report-enriched.html"
+      reportTitle: "ZAP DAST Enriched Scan"
+
+  - name: report-json
+    type: report
+    parameters:
+      reportDir: "/zap/wrk/reports"
+      reportFile: "report-enriched.json"
       reportTitle: "ZAP DAST Enriched Scan"

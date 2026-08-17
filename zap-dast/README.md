@@ -78,9 +78,10 @@ docker compose down -v
 
 ### Interpreting results
 
-- **Baseline scan** — spider + active scan against the auth-proxy, discovering vulnerabilities in the API attack surface.
-- **Enriched scan** — same as baseline (proxy always injects the test API key).
+- **Baseline scan** — spider + active scan against the auth-proxy, discovering vulnerabilities on the unauthenticated API surface.
+- **Enriched scan** — leverages the OpenAPI spec (with example values) to guide discovery and fuzzing, applies threat-model-based alertFilters to suppress/downgrade known false positives, runs with authentication (proxy injects test API key).
 - **Reports** — generated as HTML files in `reports/` directory (`report-baseline.html`, `report-enriched.html`).
+- **Triage** — `scripts/triage-report.py` applies threat-model false-positive rules to determine pass/fail (fails on confirmed High or Medium, not on Low/Info).
 
 Each report contains:
 - Alert counts by risk and confidence

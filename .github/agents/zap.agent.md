@@ -114,8 +114,11 @@ The agent generates standard AF YAMLs conforming to ZAP's Automation Framework s
 * `report` job: generates HTML report with `reportDir`, `reportFile`, and `reportTitle` parameters.
 
 **Pass 2 (`zap-af-enriched.yaml`) Pipeline:**
-* Same as baseline (proxy always injects API key via `X-Api-Key` header).
-* For future enhancements: additional jobs can be added (e.g., `alertFilter` for suppressions, custom policies).
+* `openapi` job: imports the enriched OpenAPI spec with example values, providing better parameter fuzzing guidance
+* `spider` + `activeScan` jobs: same as baseline, but now discovering from the OpenAPI spec
+* `alertFilter` job: applies threat-model false-positive suppressions (SUPPRESS/DOWNGRADE by rule ID and URL pattern)
+* `report` job: generates HTML report (JSON available via separate export)
+* Proxy always injects API key via `X-Api-Key` header for authenticated testing
 
 **Authentication (Auth Proxy Sidecar):**
 * `env.contexts.authentication` is NOT used. Instead, the `zap-auth-proxy` sidecar injects credentials.
@@ -123,10 +126,11 @@ The agent generates standard AF YAMLs conforming to ZAP's Automation Framework s
 * The proxy injects `X-Api-Key: <test-key>` header before routing to the actual API.
 
 **Important Parameter Notes:**
+* `openapi` job: uses `apiFile` (local path), `context`, `targetUrl` parameters. Imports OpenAPI spec and discovers endpoints.
+* `alertFilter` job: uses `alertFilters` list with per-filter `ruleId`, `newRisk` ('False Positive', 'Info', 'Low', 'Medium', 'High'), and optional `url`/`urlRegex` matching.
 * `spider`: uses `url` (not `method`), `maxDepth` parameters.
 * `activeScan`: uses `url` and `policy` parameters (not `method`).
-* `report`: uses `reportDir`, `reportFile`, `reportTitle` (not `reportFile` as full path).
-* `openapi` job: parameter names vary across ZAP versions; spider/activeScan are more reliable.
+* `report`: uses `reportDir`, `reportFile`, `reportTitle` (not `reportFile` as full path). File extension determines format (`.html`, `.xml`, etc.); ZAP 2.17.0+ may have format restrictions.
 
 ## 7. Phase 5 & 6 — Execution & Post-Scan Triage
 
