@@ -95,21 +95,38 @@ zap-dast/
 
 ### 6.2 ZAP Automation Framework (AF) Generation Contract
 
-The agent generates standard AF YAMLs. Python hooks are strictly forbidden.
+The agent generates standard AF YAMLs conforming to ZAP's Automation Framework schema.
 
-**Pass 1 (`zap-af-baseline.yaml`) Features:**
+**Context Definition (Required):**
+* Define at least one context in `env.contexts` with target URLs.
+* Example:
+  ```yaml
+  env:
+    contexts:
+      - name: "Default Context"
+        urls:
+          - "http://zap-auth-proxy:80/"
+  ```
 
-* `openapi` job pointing to raw spec.
-* `activeScan` scoped explicitly to safe methods.
+**Pass 1 (`zap-af-baseline.yaml`) Pipeline:**
+* `spider` job: discovers endpoints starting from the target URL.
+* `activeScan` job: runs active vulnerability scanning against discovered endpoints.
+* `report` job: generates HTML report with `reportDir`, `reportFile`, and `reportTitle` parameters.
 
-**Pass 2 (`zap-af-enriched.yaml`) Features:**
+**Pass 2 (`zap-af-enriched.yaml`) Pipeline:**
+* Same as baseline (proxy always injects API key via `X-Api-Key` header).
+* For future enhancements: additional jobs can be added (e.g., `alertFilter` for suppressions, custom policies).
 
-* `openapi` job pointing to `openapi-enriched.yaml`.
-* **Authentication (Auth Proxy Sidecar)**: `env.contexts.authentication` MUST NOT be used. Configure the `targetUrl` to point to the `zap-auth-proxy` service. The proxy deterministically upgrades requests with credentials before routing to the actual API.
-* `replacer` jobs for test headers/tenants.
-* `alertFilter` jobs derived directly from the Threat Model.
-* **SSRF Detection:** Native ZAP OAST add-on enabled in `activeScan` policy. Custom `mock-upstream` parsing is forbidden.
-* `report` job exporting raw JSON.
+**Authentication (Auth Proxy Sidecar):**
+* `env.contexts.authentication` is NOT used. Instead, the `zap-auth-proxy` sidecar injects credentials.
+* Configure both AF YAMLs with `targetUrl` pointing to `http://zap-auth-proxy:80`.
+* The proxy injects `X-Api-Key: <test-key>` header before routing to the actual API.
+
+**Important Parameter Notes:**
+* `spider`: uses `url` (not `method`), `maxDepth` parameters.
+* `activeScan`: uses `url` and `policy` parameters (not `method`).
+* `report`: uses `reportDir`, `reportFile`, `reportTitle` (not `reportFile` as full path).
+* `openapi` job: parameter names vary across ZAP versions; spider/activeScan are more reliable.
 
 ## 7. Phase 5 & 6 — Execution & Post-Scan Triage
 

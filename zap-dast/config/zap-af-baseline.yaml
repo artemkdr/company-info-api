@@ -1,30 +1,27 @@
 env:
-  contexts: {}
+  contexts:
+    - name: "Default Context"
+      urls:
+        - "http://zap-auth-proxy:80/"
   parameters: {}
   vars: {}
 
 jobs:
-  - name: openapi
-    type: openapi
-    parameters:
-      url: "file:///zap/wrk/config/openapi-enriched.json"
-
   - name: spider
     type: spider
     parameters:
-      url: "http://zap-auth-proxy:80"
-      maxDepth: 2
-      maxChildren: 0
+      url: "http://zap-auth-proxy:80/api/v1/health"
+      maxDepth: 3
 
   - name: activeScan
     type: activeScan
     parameters:
-      url: "http://zap-auth-proxy:80"
+      url: "http://zap-auth-proxy:80/"
       policy: "Default Policy"
 
   - name: report
     type: report
     parameters:
-      template: "modern"
-      reportFile: "/zap/wrk/reports/report.baseline.json"
-      reportTitle: "ZAP DAST Baseline Report"
+      reportDir: "/zap/wrk/reports"
+      reportFile: "report-baseline"
+      reportTitle: "ZAP DAST Baseline Scan"

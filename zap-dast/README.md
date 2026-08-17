@@ -15,7 +15,7 @@ The scan follows a 6-phase state machine:
 
 ## Directory structure
 
-```
+```text
 zap-dast/
 ├── docker-compose.yaml           # Three-service setup: target, mock-upstreams, auth-proxy
 ├── mock-upstreams/               # Nginx stubs for INSEE/VIES/ChIde/BODACC/OpenIban
@@ -39,9 +39,8 @@ zap-dast/
 ### Prerequisites
 
 - Docker (with `docker compose` v2+)
-- `bash`, `jq`, `curl`
+- `bash`
 - ZAP (via container image, not required locally)
-- Python 3.8+
 
 ### Quick start
 
@@ -54,40 +53,39 @@ docker compose up -d --build
 # 2. Wait ~30s for containers to be healthy
 docker compose logs --follow target
 
-# 3. Generate enriched OpenAPI spec
-./scripts/generate-openapi.sh
-
-# 4. Run preflight checks
-./scripts/preflight.sh
-
-# 5. Run baseline scan (unauthenticated, safe methods)
+# 3. Run baseline scan
 docker run --rm \
   -v $(pwd):/zap/wrk:rw \
   --network zap-dast_zap-dast-network \
   ghcr.io/zaproxy/zaproxy:stable \
   zap.sh -cmd -autorun /zap/wrk/config/zap-af-baseline.yaml
 
-# 6. Run enriched scan (authenticated via proxy, OAST enabled)
+# 4. Run enriched scan (authenticated via proxy)
 docker run --rm \
   -v $(pwd):/zap/wrk:rw \
   --network zap-dast_zap-dast-network \
   ghcr.io/zaproxy/zaproxy:stable \
   zap.sh -cmd -autorun /zap/wrk/config/zap-af-enriched.yaml
 
-# 7. Triage results
-python3 ./scripts/triage-report.py ./reports/report.enriched.json
+# 5. View reports
+# Reports are generated in HTML format in reports/ directory:
+#   - reports/report-baseline.html
+#   - reports/report-enriched.html
 
-# 8. Clean up
+# 6. Clean up
 docker compose down -v
 ```
 
 ### Interpreting results
 
-- **Baseline scan** — discovers unauthenticated vulns and tests unauthenticated GET-only attack surface.
-- **Enriched scan** — adds context (test API key via proxy), enables OAST for upstream-call inspection, applies threat-model-based suppressions.
-- **Triage** — applies false-positive rules, flags OAST callbacks as CONFIRMED SSRF, exits 0 if no High/Medium remain.
+- **Baseline scan** — spider + active scan against the auth-proxy, discovering vulnerabilities in the API attack surface.
+- **Enriched scan** — same as baseline (proxy always injects the test API key).
+- **Reports** — generated as HTML files in `reports/` directory (`report-baseline.html`, `report-enriched.html`).
 
-Reports are JSON, located in `reports/report.{baseline,enriched}.json` and `reports/report.enriched.triaged.json`.
+Each report contains:
+- Alert counts by risk and confidence
+- Detailed alerts with evidence and remediation guidance
+- Site/endpoint breakdown
 
 ## Mock upstreams
 
@@ -110,6 +108,7 @@ The `zap-auth-proxy` service is a plain Nginx reverse proxy that:
 3. Routes to the target API at `target:5000`
 
 Per `.github/agents/zap.agent.md` § 6.2, native ZAP authentication jobs are never used. Instead:
+
 - Baseline scan targets the target directly (no auth, tests public endpoints)
 - Enriched scan targets the proxy (requests auto-authenticated)
 
@@ -134,6 +133,7 @@ See `.github/workflows/zap-dast.yml` for the full CI workflow.
 Trigger: `workflow_dispatch` (manual)
 
 Steps:
+
 1. Checkout
 2. `docker compose up -d --build`
 3. `generate-openapi.sh`
@@ -146,27 +146,35 @@ Steps:
 
 ## Extending the scan
 
-### Adding new API routes
+**Adjusting scan depth and policy:**
+- Edit `zap-af-baseline.yaml` and `zap-af-enriched.yaml` to modify spider `maxDepth`, active scan `policy`, or target URLs.
 
-Update `threat-model.json` with any new endpoints or external APIs, then re-run locally.
+**Changing mock upstream responses:**
+- Edit `mock-upstreams/nginx.conf` and re-run `docker compose up --build` to change mock API responses.
 
-### Adding new false-positive rules
-
-Add entries to `threat-model.json`'s `false_positive_rules` array, then re-run triage.
-
-### Modifying test data
-
-Update `config/openapi-params.json` with new example values for parameters.
-
-### Changing mock upstream responses
-
-Edit `mock-upstreams/nginx.conf` and re-run `docker compose up --build`.
+**Updating the target configuration:**
+- Modify `docker-compose.yaml` env vars to change external API mock URLs or update `auth-proxy/nginx.conf` to alter header injection behavior.
 
 ## Troubleshooting
 
-### AF validation fails
+#### Scan fails to run
+
+Check that all containers are running:
+```bash
+docker compose ps
+```
+
+Check container logs for errors:
+```bash
+docker compose logs company-info-api
+docker compose logs zap-auth-proxy
+docker compose logs mock-upstreams
+```
+
+#### AF validation fails
 
 Run with verbose output:
+
 ```bash
 docker run --rm \
   -v $(pwd):/zap/wrk:ro \
@@ -177,11 +185,13 @@ docker run --rm \
 ### Auth proxy not reaching target
 
 Check target is healthy:
+
 ```bash
 docker compose logs target
 ```
 
 Then test from proxy:
+
 ```bash
 docker exec zap-auth-proxy wget -O- http://target:5000/api/v1/health
 ```
@@ -189,6 +199,7 @@ docker exec zap-auth-proxy wget -O- http://target:5000/api/v1/health
 ### OpenAPI enrichment failed
 
 Ensure target is booted and accessible:
+
 ```bash
 curl -v http://localhost:8080/swagger/v1/swagger.json
 ```
@@ -198,6 +209,7 @@ curl -v http://localhost:8080/swagger/v1/swagger.json
 ### Scan hangs or times out
 
 ZAP scans can take several minutes. Monitor logs:
+
 ```bash
 docker run --rm \
   -v $(pwd):/zap/wrk:rw \

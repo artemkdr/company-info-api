@@ -1,62 +1,27 @@
 env:
-  contexts: {}
+  contexts:
+    - name: "Default Context"
+      urls:
+        - "http://zap-auth-proxy:80/"
   parameters: {}
   vars: {}
 
 jobs:
-  - name: openapi
-    type: openapi
-    parameters:
-      url: "file:///zap/wrk/config/openapi-enriched.json"
-
   - name: spider
     type: spider
     parameters:
-      url: "http://zap-auth-proxy:80"
-      maxDepth: 2
-      maxChildren: 0
-
-  - name: replacer
-    type: replacer
-    parameters:
-      rules:
-        - description: "Add custom header for testing"
-          type: "Request-Header"
-          matchType: "REQ_HEADER"
-          matchString: "X-Test-Header"
-          replacement: "test-value"
+      url: "http://zap-auth-proxy:80/api/v1/health"
+      maxDepth: 3
 
   - name: activeScan
     type: activeScan
     parameters:
-      url: "http://zap-auth-proxy:80"
+      url: "http://zap-auth-proxy:80/"
       policy: "Default Policy"
-
-  - name: alertFilter_sessioncookie
-    type: alertFilter
-    parameters:
-      alertFilters:
-        - ruleId: 3
-          newRisk: "off"
-
-  - name: alertFilter_xframe
-    type: alertFilter
-    parameters:
-      alertFilters:
-        - ruleId: 6
-          newRisk: "informational"
-          urlRegex: ".*health.*"
-
-  - name: alertFilter_xss
-    type: alertFilter
-    parameters:
-      alertFilters:
-        - ruleId: 10098
-          newRisk: "off"
 
   - name: report
     type: report
     parameters:
-      template: "modern"
-      reportFile: "/zap/wrk/reports/report.enriched.json"
-      reportTitle: "ZAP DAST Enriched Report"
+      reportDir: "/zap/wrk/reports"
+      reportFile: "report-enriched"
+      reportTitle: "ZAP DAST Enriched Scan"
