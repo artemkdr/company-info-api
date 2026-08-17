@@ -19,9 +19,10 @@ jobs:
       url: "http://zap-auth-proxy:80/"
       policy: "Default Policy"
 
-  - name: report-html
+  - name: report
     type: report
     parameters:
+      template: "traditional-html"
       reportDir: "/zap/wrk/reports"
       reportFile: "report-baseline.html"
       reportTitle: "ZAP DAST Baseline Scan"
@@ -29,6 +30,7 @@ jobs:
   - name: report-json
     type: report
     parameters:
+      template: "traditional-json"
       reportDir: "/zap/wrk/reports"
       reportFile: "report-baseline.json"
       reportTitle: "ZAP DAST Baseline Scan"

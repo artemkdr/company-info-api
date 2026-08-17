@@ -37,9 +37,10 @@ jobs:
       - ruleId: 10098
         newRisk: "False Positive"
 
-  - name: report-html
+  - name: report
     type: report
     parameters:
+      template: "traditional-html"
       reportDir: "/zap/wrk/reports"
       reportFile: "report-enriched.html"
       reportTitle: "ZAP DAST Enriched Scan"
@@ -47,6 +48,7 @@ jobs:
   - name: report-json
     type: report
     parameters:
+      template: "traditional-json"
       reportDir: "/zap/wrk/reports"
       reportFile: "report-enriched.json"
       reportTitle: "ZAP DAST Enriched Scan"
