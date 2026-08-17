@@ -15,7 +15,7 @@ on:
 
 permissions:
   contents: read
-  artifacts: write
+  actions: write
 
 jobs:
   zap-dast:
