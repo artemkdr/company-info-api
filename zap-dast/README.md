@@ -89,6 +89,7 @@ docker compose down -v
 - **Triage** — `scripts/triage-report.py` applies threat-model false-positive rules to determine pass/fail (fails on confirmed High or Medium, not on Low/Info).
 
 Each report contains:
+
 - Alert counts by risk and confidence
 - Detailed alerts with evidence and remediation guidance
 - Site/endpoint breakdown
@@ -155,31 +156,36 @@ Exit code from triage determines CI pass/fail.
 ## Extending the scan
 
 **Adjusting scan depth and policy:**
+
 - Edit `zap-af-baseline.yaml` and `zap-af-enriched.yaml` to modify spider `maxDepth`, active scan `policy`, or target URLs.
 
 **Changing mock upstream responses:**
+
 - Edit `mock-upstreams/nginx.conf` and re-run `docker compose up --build` to change mock API responses.
 
 **Updating the target configuration:**
+
 - Modify `docker-compose.yaml` env vars to change external API mock URLs or update `auth-proxy/nginx.conf` to alter header injection behavior.
 
 ## Troubleshooting
 
-#### Scan fails to run
+### Scan fails to run
 
 Check that all containers are running:
+
 ```bash
 docker compose ps
 ```
 
 Check container logs for errors:
+
 ```bash
 docker compose logs company-info-api
 docker compose logs zap-auth-proxy
 docker compose logs mock-upstreams
 ```
 
-#### AF validation fails
+### AF validation fails
 
 Run with verbose output:
 
